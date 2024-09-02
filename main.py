@@ -9,6 +9,9 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption('State of slow decay')
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+bg_music = pygame.mixer.Sound('audio/bbg.ogg')
+bg_music.play(loops=-1)
+locations = ["Mill","Start","Center",]
 
 recognizer = sr.Recognizer()
 
@@ -40,7 +43,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_v:  #v
+            if event.key == pygame.K_SPACE:  #spacja
                 text = recognize_speech_from_mic(recognizer, sr.Microphone())
                 if text == "quit":
                     running = False
