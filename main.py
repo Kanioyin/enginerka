@@ -15,6 +15,19 @@ locations = ["Mill","Start","Center",]
 
 recognizer = sr.Recognizer()
 
+class Location():
+    def __init__(self, seen, intro, pos_loc, items):
+        self.seen = False
+        self.intro = self
+        self.pos_loc = self
+        self.items = self
+
+
+Center = Location(False,"center.mp3",["Mill","Tawern"],None)
+Mill = Location(False,"mill.mp3",["Center"], None)
+Tavern = Location(False,"tavern.mp3",["Center","Basement"], "Key")
+Basement = Location(False,"base.mp3",["Center"],None)
+
 def recognize_speech_from_mic(recognizer, microphone):
     with microphone as source:
         recognizer.adjust_for_ambient_noise(source)
@@ -36,6 +49,7 @@ def recognize_speech_from_mic(recognizer, microphone):
     except sr.RequestError:
         print('Sorry, the speech service is down.')
         return None
+
 
 running = True
 while running:
