@@ -8,7 +8,7 @@ pygame.mixer.init()
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Szczyl w lochu")
+pygame.display.set_caption("Ślepy lochołaz")
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -27,7 +27,7 @@ wall_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 # niepodległosć
 MAP_SIZE = 5
 player_position = [2, 2]
-player_health = 30
+player_health = 3
 
 
 def recognize_command():
@@ -66,26 +66,32 @@ class Spell:
             print(f"Zaklęcie {self.name} nie ma już pozostałych użyć.")
 
 
-fireball = Spell("Kula Ognia", "Ogień", 3, "kula ognia", 10, fireball_sound)
-wind_blast = Spell("Podmuch Wiatru", "Wiatr", 5, "podmuch wiatru", 7, wind_blast_sound)
+fireball = Spell("Kula Ognia", "Ogień", 2, "kula ognia", 1, fireball_sound)
+wind_blast = Spell("Podmuch Wiatru", "Wiatr", 2, "podmuch wiatru", 1, wind_blast_sound)
 
 
 def activate_spell(command):
     if fireball.activation_command in command:
         fireball.cast()
+
     elif wind_blast.activation_command in command:
         wind_blast.cast()
+
     else:
         print("Nieznane zaklęcie.")
 
 
 class Monster:
-    def __init__(self, name, health, weakness, damage, speed):
+    def __init__(self, name, health, weakness, damage, speed, sound_file):
         self.name = name
         self.health = health
         self.weakness = weakness
         self.damage = damage
         self.speed = speed
+        self.sound = pygame.mixer.Sound(sound_file)
+
+    def play_sound(self):
+        self.sound.play()
 
     def take_damage(self, amount, damage_type):
         if damage_type == self.weakness:
@@ -98,14 +104,14 @@ class Monster:
             print(f"{self.name} został pokonany!")
 
 
-zombi = Monster("Zombi", 10, "Ogień", 3, 1)
-szlam = Monster("Szlam", 8, "Wiatr", 2, 2)
+zombi = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
+szlam = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/Tup.ogg")
 
 
 def battle(ph, monster, room):
-    print(f"Rozpoczyna się walka! Zmierzasz się z {monster.name}.")
+    monster.play_sound()
+    print(f"PVP z {monster.name}.")
     while monster.health > 0:
-        print(f"{monster.name} ma {monster.health} punktów zdrowia.")
         command = recognize_command()
 
         if "kula ognia" in command:
@@ -182,8 +188,8 @@ class Room:
 
 def generate_dungeon():
     dungeon_map = [[Room() for _ in range(5)] for _ in range(5)]
-    monsters = [Monster("Zombi", 10, "Ogień", 3, 1),
-                Monster("Szlam", 8, "Wiatr", 2, 2)]
+    monsters = [Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav"),
+                Monster("Szlam", 2, "Wiatr", 1, 1, "audio/Tup.ogg")]
 
     for _ in range(5):
         x, y = random.randint(0, 4), random.randint(0, 4)
@@ -195,7 +201,7 @@ def generate_dungeon():
 dungeon_map = generate_dungeon()
 running = True
 while running:
-    screen.fill(WHITE)
+    screen.fill(BLACK)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -206,10 +212,12 @@ while running:
 
                 command = recognize_command()
 
-                if command:
-                    player_position = move_player_on_map(command, player_position, dungeon_map)
-                elif command == "exit":
+                if command == "wyjdź":
                     running = False
+
+                elif command:
+                    player_position = move_player_on_map(command, player_position, dungeon_map)
+
                 else:
                     print("Nieznana komenda.")
 
