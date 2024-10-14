@@ -16,18 +16,24 @@ BLACK = (0, 0, 0)
 recognizer = sr.Recognizer()
 microphone = sr.Microphone()
 
-# muza
 fireball_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 wind_blast_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 pygame.mixer.music.load("audio/bbg.ogg")
-pygame.mixer.music.play(-1)  # -1 to lup do infinita
+pygame.mixer.music.play(-1)  # -1 to nieskończona pętla
 step_sound = pygame.mixer.Sound("audio/Tup.ogg")
 wall_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+end_sound = pygame.mixer.Sound("audio/end_sound.ogg")
 
-# niepodległosć
 MAP_SIZE = 5
 player_position = [2, 2]
 player_health = 3
+
+movement_synonyms = {
+    "góra": ["góra", "w górę", "na północ", "w górę mapy", "do góry"],
+    "dół": ["dół", "w dół", "na południe", "na dół"],
+    "lewo": ["lewo", "w lewo", "na lewo", "na zachód"],
+    "prawo": ["prawo", "w prawo", "na prawo", "na wschód"]
+}
 
 
 def recognize_command():
@@ -37,13 +43,13 @@ def recognize_command():
         audio = recognizer.listen(source)
     try:
         command = recognizer.recognize_google(audio, language="pl-PL")
-        print(f"Słysze: {command}")
+        print(f"Słyszę: {command}")
         return command.lower()
     except sr.UnknownValueError:
-        print("Ja nie panimaju")
+        print("Nie rozumiem.")
         return None
     except sr.RequestError:
-        print("No necig?")
+        print("Błąd sieci.")
         return None
 
 
@@ -68,17 +74,6 @@ class Spell:
 
 fireball = Spell("Kula Ognia", "Ogień", 2, "kula ognia", 1, fireball_sound)
 wind_blast = Spell("Podmuch Wiatru", "Wiatr", 2, "podmuch wiatru", 1, wind_blast_sound)
-
-
-def activate_spell(command):
-    if fireball.activation_command in command:
-        fireball.cast()
-
-    elif wind_blast.activation_command in command:
-        wind_blast.cast()
-
-    else:
-        print("Nieznane zaklęcie.")
 
 
 class Monster:
@@ -127,48 +122,18 @@ def battle(ph, monster, room):
             break
 
         ph -= monster.damage
-        print(f"{monster.name} atakuje i zadaje {monster.damage} obrażeń. Masz teraz {player_health} punktów zdrowia.")
+        print(f"{monster.name} atakuje i zadaje {monster.damage} obrażeń. Masz teraz {ph} punktów zdrowia.")
 
         if ph <= 0:
             print("Zostałeś pokonany!")
             break
 
 
-movement_synonyms = {
-    "góra": ["góra", "w górę", "na północ", "w górę mapy", "do góry"],
-    "dół": ["dół", "w dół", "na południe", "na dół"],
-    "lewo": ["lewo", "w lewo", "na lewo", "na zachód"],
-    "prawo": ["prawo", "w prawo", "na prawo", "na wschód"]
-}
-
-
-def move_player_on_map(command, player_pos, dungeon_map):
-    x, y = player_pos
-
-    if any(synonym in command for synonym in movement_synonyms["góra"]) and x > 0:
-        x -= 1
-        step_sound.play()
-    elif any(synonym in command for synonym in movement_synonyms["dół"]) and x < 4:
-        x += 1
-        step_sound.play()
-    elif any(synonym in command for synonym in movement_synonyms["lewo"]) and y > 0:
-        y -= 1
-        step_sound.play()
-    elif any(synonym in command for synonym in movement_synonyms["prawo"]) and y < 4:
-        y += 1
-        step_sound.play()
-    else:
-        wall_sound.play()
-
-    new_room = dungeon_map[x][y]
-    new_room.enter()
-    return (x, y)
-
-
 class Room:
-    def __init__(self, has_monster=False):
+    def __init__(self, has_monster=False, is_exit=False):
         self.has_monster = has_monster
         self.monster = None
+        self.is_exit = is_exit
 
     def place_monster(self, monster):
         self.has_monster = True
@@ -179,23 +144,72 @@ class Room:
         self.monster = None
 
     def enter(self):
-        if self.has_monster and self.monster:
+        if self.is_exit:
+            end_sound.play()
+            print("Koniec gry!")
+            screen.fill(WHITE)
+            font = pygame.font.SysFont(None, 55)
+            end_text = font.render("Koniec gry!", True, BLACK)
+            screen.blit(end_text, (SCREEN_WIDTH // 2 - end_text.get_width() // 2, SCREEN_HEIGHT // 2))
+            pygame.display.flip()
+            pygame.time.wait(2000)
+            wait_for_exit()
+        elif self.has_monster and self.monster:
             print(f"Znalazłeś {self.monster.name}!")
             battle(player_health, self.monster, self)
         else:
             print("Pokój jest pusty.")
 
 
-def generate_dungeon():
-    dungeon_map = [[Room() for _ in range(5)] for _ in range(5)]
-    monsters = [Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav"),
-                Monster("Szlam", 2, "Wiatr", 1, 1, "audio/Tup.ogg")]
+def wait_for_exit():
+    global running
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                waiting = False
+            if event.type == pygame.KEYDOWN:
+                running = False
+                waiting = False
 
+
+def generate_dungeon():
+    dungeon_map = [[Room() for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
+
+    exit_x, exit_y = random.randint(0, 4), random.randint(0, 4)
+    dungeon_map[exit_y][exit_x].is_exit = True
+
+    monsters = [zombi, szlam]
     for _ in range(5):
         x, y = random.randint(0, 4), random.randint(0, 4)
-        if not dungeon_map[x][y].has_monster:
-            dungeon_map[x][y].place_monster(random.choice(monsters))
+        if not dungeon_map[y][x].is_exit:
+            dungeon_map[y][x].place_monster(random.choice(monsters))
+
     return dungeon_map
+
+
+def move_player_on_map(command, player_pos, dungeon_map):
+    x, y = player_pos
+
+    if any(synonym in command for synonym in movement_synonyms["góra"]) and y > 0:
+        y -= 1
+        step_sound.play()
+    elif any(synonym in command for synonym in movement_synonyms["dół"]) and y < MAP_SIZE - 1:
+        y += 1
+        step_sound.play()
+    elif any(synonym in command for synonym in movement_synonyms["lewo"]) and x > 0:
+        x -= 1
+        step_sound.play()
+    elif any(synonym in command for synonym in movement_synonyms["prawo"]) and x < MAP_SIZE - 1:
+        x += 1
+        step_sound.play()
+    else:
+        wall_sound.play()
+
+    new_room = dungeon_map[y][x]
+    new_room.enter()
+    return [x, y]
 
 
 dungeon_map = generate_dungeon()
