@@ -18,11 +18,14 @@ microphone = sr.Microphone()
 
 fireball_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 wind_blast_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+giant_rock_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+fury_strike_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+lightning_strike_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 pygame.mixer.music.load("audio/bbg.ogg")
 pygame.mixer.music.play(-1)  # -1 to nieskończona pętla
 step_sound = pygame.mixer.Sound("audio/Tup.ogg")
 wall_sound = pygame.mixer.Sound("audio/Bonk.mp3")
-end_sound = pygame.mixer.Sound("audio/end_sound.ogg")
+end_sound = pygame.mixer.Sound("audio/claps.ogg")
 
 MAP_SIZE = 5
 player_position = [2, 2]
@@ -74,7 +77,9 @@ class Spell:
 
 fireball = Spell("Kula Ognia", "Ogień", 2, "kula ognia", 1, fireball_sound)
 wind_blast = Spell("Podmuch Wiatru", "Wiatr", 2, "podmuch wiatru", 1, wind_blast_sound)
-
+giant_rock = Spell("Wielki głaz", "Ziemia", 2, "skała", 1, giant_rock_sound)
+fury_strike = Spell("Cios gniewu", "Fizyczne", 2, "cios gniewu", 1, fury_strike_sound)
+lightning_strike = Spell("Błyskawica", "Elektryczność", 2, "błyskawica", 1, lightning_strike_sound)
 
 class Monster:
     def __init__(self, name, health, weakness, damage, speed, sound_file):
@@ -100,8 +105,9 @@ class Monster:
 
 
 zombi = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
-szlam = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/Tup.ogg")
-
+zombi2 = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
+szlam = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
+szlam2 = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
 
 def battle(ph, monster, room):
     monster.play_sound()
@@ -113,6 +119,12 @@ def battle(ph, monster, room):
             fireball.cast(monster)
         elif "podmuch wiatru" in command:
             wind_blast.cast(monster)
+        elif "skała" in command:
+            giant_rock.cast(monster)
+        elif "cios gniewu" in command:
+            fury_strike.cast(monster)
+        elif "błyskawica" in command:
+            lightning_strike.cast(monster)
         else:
             print("Nieznane zaklęcie.")
 
@@ -126,7 +138,8 @@ def battle(ph, monster, room):
 
         if ph <= 0:
             print("Zostałeś pokonany!")
-            break
+            pygame.quit()  # Wyłączenie gry
+            exit()
 
 
 class Room:
@@ -174,17 +187,21 @@ def wait_for_exit():
                 waiting = False
 
 
-def generate_dungeon():
-    dungeon_map = [[Room() for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
+def generate_dungeon(map_size, num_monsters):
+    dungeon_map = [[Room() for _ in range(map_size)] for _ in range(map_size)]
 
-    exit_x, exit_y = random.randint(0, 4), random.randint(0, 4)
+    exit_x, exit_y = random.randint(0, map_size - 1), random.randint(0, map_size - 1)
     dungeon_map[exit_y][exit_x].is_exit = True
 
-    monsters = [zombi, szlam]
-    for _ in range(5):
-        x, y = random.randint(0, 4), random.randint(0, 4)
-        if not dungeon_map[y][x].is_exit:
+    monsters = [zombi, zombi2, szlam, szlam2]
+
+    placed_monsters = 0
+    while placed_monsters < num_monsters:
+        x, y = random.randint(0, map_size - 1), random.randint(0, map_size - 1)
+
+        if not dungeon_map[y][x].has_monster and not dungeon_map[y][x].is_exit:
             dungeon_map[y][x].place_monster(random.choice(monsters))
+            placed_monsters += 1
 
     return dungeon_map
 
@@ -212,7 +229,7 @@ def move_player_on_map(command, player_pos, dungeon_map):
     return [x, y]
 
 
-dungeon_map = generate_dungeon()
+dungeon_map = generate_dungeon(MAP_SIZE, 5)
 running = True
 while running:
     screen.fill(BLACK)
