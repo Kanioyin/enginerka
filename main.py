@@ -108,6 +108,12 @@ zombi = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
 zombi2 = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
 szlam = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
 szlam2 = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
+ognik = Monster("Ognik",2,"Ziemia",1, 1, "audio/szlamek.mp3")
+ognik2 = Monster("Ognik",2,"Ziemia",1, 1, "audio/szlamek.mp3")
+bandzior = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
+bandzior2 = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
+latacz = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.mp3")
+latacz2 = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.mp3")
 
 def battle(ph, monster, room):
     monster.play_sound()
@@ -193,7 +199,7 @@ def generate_dungeon(map_size, num_monsters):
     exit_x, exit_y = random.randint(0, map_size - 1), random.randint(0, map_size - 1)
     dungeon_map[exit_y][exit_x].is_exit = True
 
-    monsters = [zombi, zombi2, szlam, szlam2]
+    monsters = [zombi, zombi2, szlam, szlam2, ognik, ognik2, bandzior, bandzior2, latacz, latacz2]
 
     placed_monsters = 0
     while placed_monsters < num_monsters:
