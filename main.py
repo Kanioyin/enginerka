@@ -80,6 +80,7 @@ wind_blast = Spell("Podmuch Wiatru", "Wiatr", 2, "podmuch wiatru", 1, wind_blast
 giant_rock = Spell("Wielki głaz", "Ziemia", 2, "skała", 1, giant_rock_sound)
 fury_strike = Spell("Cios gniewu", "Fizyczne", 2, "cios gniewu", 1, fury_strike_sound)
 lightning_strike = Spell("Błyskawica", "Elektryczność", 2, "błyskawica", 1, lightning_strike_sound)
+escape_spell = Spell("Ucieczka", "Neutralne", float('inf'), "ucieczka", 0, None)
 
 class Monster:
     def __init__(self, name, health, weakness, damage, speed, sound_file):
@@ -112,12 +113,13 @@ ognik = Monster("Ognik",2,"Ziemia",1, 1, "audio/szlamek.mp3")
 ognik2 = Monster("Ognik",2,"Ziemia",1, 1, "audio/szlamek.mp3")
 bandzior = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
 bandzior2 = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
-latacz = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.mp3")
-latacz2 = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.mp3")
+latacz = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/Zombi.wav")
+latacz2 = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/Zombi.wav")
 
-def battle(ph, monster, room):
+def battle(ph, monster, room, previous_position, player_position):
     monster.play_sound()
-    print(f"PVP z {monster.name}.")
+    print(f"Rozpoczęto walkę z {monster.name}.")
+
     while monster.health > 0:
         command = recognize_command()
 
@@ -131,6 +133,9 @@ def battle(ph, monster, room):
             fury_strike.cast(monster)
         elif "błyskawica" in command:
             lightning_strike.cast(monster)
+        elif "ucieczka" in command:
+            print("Uciekasz z walki!")
+            return previous_position  # Gracz wraca do poprzedniego pokoju
         else:
             print("Nieznane zaklęcie.")
 
@@ -139,13 +144,15 @@ def battle(ph, monster, room):
             room.remove_monster()
             break
 
+        # Potwór atakuje
         ph -= monster.damage
         print(f"{monster.name} atakuje i zadaje {monster.damage} obrażeń. Masz teraz {ph} punktów zdrowia.")
-
         if ph <= 0:
             print("Zostałeś pokonany!")
             pygame.quit()  # Wyłączenie gry
             exit()
+
+    return player_position
 
 
 class Room:
@@ -213,26 +220,33 @@ def generate_dungeon(map_size, num_monsters):
 
 
 def move_player_on_map(command, player_pos, dungeon_map):
+    global player_position
     x, y = player_pos
+    previous_position = [x, y]  # Zapisujemy poprzednią pozycję
 
+    # Logika ruchu
     if any(synonym in command for synonym in movement_synonyms["góra"]) and y > 0:
         y -= 1
-        step_sound.play()
     elif any(synonym in command for synonym in movement_synonyms["dół"]) and y < MAP_SIZE - 1:
         y += 1
-        step_sound.play()
     elif any(synonym in command for synonym in movement_synonyms["lewo"]) and x > 0:
         x -= 1
-        step_sound.play()
     elif any(synonym in command for synonym in movement_synonyms["prawo"]) and x < MAP_SIZE - 1:
         x += 1
-        step_sound.play()
     else:
         wall_sound.play()
+        return [x, y]
 
+    step_sound.play()
+    # Wejście do nowego pokoju
     new_room = dungeon_map[y][x]
-    new_room.enter()
-    return [x, y]
+    if new_room.has_monster and new_room.monster:
+        player_position = battle(player_health, new_room.monster, new_room, previous_position, [x, y])
+    else:
+        new_room.enter()
+        player_position = [x, y]  # Aktualizacja pozycji gracza
+
+    return player_position
 
 
 dungeon_map = generate_dungeon(MAP_SIZE, 5)
@@ -243,20 +257,15 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                print(f"Pozycja gracza: {player_position}")
+    command = recognize_command()
 
-                command = recognize_command()
-
-                if command == "wyjdź":
-                    running = False
-
-                elif command:
-                    player_position = move_player_on_map(command, player_position, dungeon_map)
-
-                else:
-                    print("Nieznana komenda.")
+    if command == "wyjdź":
+        running = False
+    elif command:
+        player_position = move_player_on_map(command, player_position, dungeon_map)
+        print(f"Pozycja gracza: {player_position}")
+    else:
+        print("Nieznana komenda.")
 
     pygame.display.flip()
 
