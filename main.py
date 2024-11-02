@@ -16,9 +16,9 @@ BLACK = (0, 0, 0)
 recognizer = sr.Recognizer()
 microphone = sr.Microphone()
 
-fireball_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+fireball_sound = pygame.mixer.Sound("audio/coolaognia.wav")
 wind_blast_sound = pygame.mixer.Sound("audio/Bonk.mp3")
-giant_rock_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+giant_rock_sound = pygame.mixer.Sound("audio/rocek.ogg")
 fury_strike_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 lightning_strike_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 pygame.mixer.music.load("audio/bbg.ogg")
@@ -109,35 +109,42 @@ zombi = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
 zombi2 = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
 szlam = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
 szlam2 = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
-ognik = Monster("Ognik",2,"Ziemia",1, 1, "audio/szlamek.mp3")
-ognik2 = Monster("Ognik",2,"Ziemia",1, 1, "audio/szlamek.mp3")
+ognik = Monster("Ognik",2,"Ziemia",1, 1, "audio/ognik.ogg")
+ognik2 = Monster("Ognik",2,"Ziemia",1, 1, "audio/ognik.ogg")
 bandzior = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
 bandzior2 = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
-latacz = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/Zombi.wav")
-latacz2 = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/Zombi.wav")
+latacz = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.ogg")
+latacz2 = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.ogg")
+
 
 def battle(ph, monster, room, previous_position, player_position):
     monster.play_sound()
     print(f"Rozpoczęto walkę z {monster.name}.")
 
     while monster.health > 0:
-        command = recognize_command()
+        command = None
+        while not command:
+            command = recognize_command()
+            if not command:
+                print("Nie rozumiem, spróbuj ponownie.")
+                continue
 
-        if "kula ognia" in command:
-            fireball.cast(monster)
-        elif "podmuch wiatru" in command:
-            wind_blast.cast(monster)
-        elif "skała" in command:
-            giant_rock.cast(monster)
-        elif "cios gniewu" in command:
-            fury_strike.cast(monster)
-        elif "błyskawica" in command:
-            lightning_strike.cast(monster)
-        elif "ucieczka" in command:
-            print("Uciekasz z walki!")
-            return previous_position  # Gracz wraca do poprzedniego pokoju
-        else:
-            print("Nieznane zaklęcie.")
+            if "kula ognia" in command:
+                fireball.cast(monster)
+            elif "podmuch wiatru" in command:
+                wind_blast.cast(monster)
+            elif "skała" in command:
+                giant_rock.cast(monster)
+            elif "cios gniewu" in command:
+                fury_strike.cast(monster)
+            elif "błyskawica" in command:
+                lightning_strike.cast(monster)
+            elif "ucieczka" in command:
+                print("Uciekasz z walki!")
+                return previous_position
+            else:
+                print("Nieznane zaklęcie. Spróbuj ponownie.")
+                command = None
 
         if monster.health <= 0:
             print(f"Pokonałeś {monster.name}!")
@@ -222,9 +229,8 @@ def generate_dungeon(map_size, num_monsters):
 def move_player_on_map(command, player_pos, dungeon_map):
     global player_position
     x, y = player_pos
-    previous_position = [x, y]  # Zapisujemy poprzednią pozycję
+    previous_position = [x, y]
 
-    # Logika ruchu
     if any(synonym in command for synonym in movement_synonyms["góra"]) and y > 0:
         y -= 1
     elif any(synonym in command for synonym in movement_synonyms["dół"]) and y < MAP_SIZE - 1:
@@ -237,14 +243,13 @@ def move_player_on_map(command, player_pos, dungeon_map):
         wall_sound.play()
         return [x, y]
 
-    step_sound.play()
-    # Wejście do nowego pokoju
+    step_sound.play(1)
     new_room = dungeon_map[y][x]
     if new_room.has_monster and new_room.monster:
         player_position = battle(player_health, new_room.monster, new_room, previous_position, [x, y])
     else:
         new_room.enter()
-        player_position = [x, y]  # Aktualizacja pozycji gracza
+        player_position = [x, y]
 
     return player_position
 
