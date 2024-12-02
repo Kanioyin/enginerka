@@ -17,10 +17,10 @@ recognizer = sr.Recognizer()
 microphone = sr.Microphone()
 
 fireball_sound = pygame.mixer.Sound("audio/coolaognia.wav")
-wind_blast_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+wind_blast_sound = pygame.mixer.Sound("audio/wiater.mp3")
 giant_rock_sound = pygame.mixer.Sound("audio/rocek.ogg")
-fury_strike_sound = pygame.mixer.Sound("audio/Bonk.mp3")
-lightning_strike_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+fury_strike_sound = pygame.mixer.Sound("audio/PUNCH.mp3")
+lightning_strike_sound = pygame.mixer.Sound("audio/pierun.mp3")
 pygame.mixer.music.load("audio/bbg.ogg")
 pygame.mixer.music.play(-1)  # -1 to nieskończona pętla
 step_sound = pygame.mixer.Sound("audio/Tup.ogg")
@@ -81,6 +81,7 @@ giant_rock = Spell("Wielki głaz", "Ziemia", 2, "skała", 1, giant_rock_sound)
 fury_strike = Spell("Cios gniewu", "Fizyczne", 2, "cios gniewu", 1, fury_strike_sound)
 lightning_strike = Spell("Błyskawica", "Elektryczność", 2, "błyskawica", 1, lightning_strike_sound)
 escape_spell = Spell("Ucieczka", "Neutralne", float('inf'), "ucieczka", 0, None)
+
 
 class Monster:
     def __init__(self, name, health, weakness, damage, speed, sound_file):
