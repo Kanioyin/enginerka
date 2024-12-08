@@ -26,10 +26,14 @@ pygame.mixer.music.play(-1)  # -1 to nieskończona pętla
 step_sound = pygame.mixer.Sound("audio/Tup.ogg")
 wall_sound = pygame.mixer.Sound("audio/Bonk.mp3")
 end_sound = pygame.mixer.Sound("audio/claps.ogg")
+health_sound = pygame.mixer.Sound("audio/heart.mp3")
+
 
 MAP_SIZE = 5
 player_position = [2, 2]
 player_health = 3
+current_level = 0
+quantity_of_levels = 3
 
 movement_synonyms = {
     "góra": ["góra", "w górę", "na północ", "w górę mapy", "do góry"],
@@ -43,17 +47,20 @@ def recognize_command():
     with microphone as source:
         recognizer.adjust_for_ambient_noise(source)
         print("Słucham...")
-        audio = recognizer.listen(source)
-    try:
-        command = recognizer.recognize_google(audio, language="pl-PL")
-        print(f"Słyszę: {command}")
-        return command.lower()
-    except sr.UnknownValueError:
-        print("Nie rozumiem.")
-        return None
-    except sr.RequestError:
-        print("Błąd sieci.")
-        return None
+        try:
+            audio = recognizer.listen(source, timeout=10, phrase_time_limit=10)
+            command = recognizer.recognize_google(audio, language="pl-PL")
+            print(f"Słyszę: {command}")
+            return command.lower()
+        except sr.WaitTimeoutError:
+            print("Nie usłyszałem żadnej komendy. Spróbuj ponownie.")
+            return None
+        except sr.UnknownValueError:
+            print("Nie rozumiem. Spróbuj ponownie.")
+            return None
+        except sr.RequestError:
+            print("Błąd sieci.")
+            return None
 
 
 class Spell:
@@ -77,17 +84,18 @@ class Spell:
 
 fireball = Spell("Kula Ognia", "Ogień", 2, "kula ognia", 1, fireball_sound)
 wind_blast = Spell("Podmuch Wiatru", "Wiatr", 2, "podmuch wiatru", 1, wind_blast_sound)
-giant_rock = Spell("Wielki głaz", "Ziemia", 2, "skała", 1, giant_rock_sound)
+giant_rock = Spell("Skała", "Ziemia", 2, "skała", 1, giant_rock_sound)
 fury_strike = Spell("Cios gniewu", "Fizyczne", 2, "cios gniewu", 1, fury_strike_sound)
 lightning_strike = Spell("Błyskawica", "Elektryczność", 2, "błyskawica", 1, lightning_strike_sound)
 escape_spell = Spell("Ucieczka", "Neutralne", float('inf'), "ucieczka", 0, None)
 
 
 class Monster:
-    def __init__(self, name, health, weakness, damage, speed, sound_file):
+    def __init__(self, name, health, weakness, resist, damage, speed, sound_file):
         self.name = name
         self.health = health
         self.weakness = weakness
+        self.resist = resist
         self.damage = damage
         self.speed = speed
         self.sound = pygame.mixer.Sound(sound_file)
@@ -99,6 +107,9 @@ class Monster:
         if damage_type == self.weakness:
             amount *= 2
             print(f"{self.name} jest słaby na {damage_type}")
+        elif damage_type == self.resist:
+            amount = 0
+            print(f"{self.name} jest odporny na {damage_type}")
         self.health -= amount
         if self.health > 0:
             print(f"{self.name} ma teraz {self.health} punktów zdrowia.")
@@ -106,19 +117,20 @@ class Monster:
             print(f"{self.name} został pokonany!")
 
 
-zombi = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
-zombi2 = Monster("Zombi", 2, "Ogień", 1, 1, "audio/Zombi.wav")
-szlam = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
-szlam2 = Monster("Szlam", 2, "Wiatr", 1, 1, "audio/szlamek.mp3")
-ognik = Monster("Ognik",2,"Ziemia",1, 1, "audio/ognik.ogg")
-ognik2 = Monster("Ognik",2,"Ziemia",1, 1, "audio/ognik.ogg")
-bandzior = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
-bandzior2 = Monster("Bandzior", 2, "Fizyczne", 1, 1, "audio/bandzior.mp3")
-latacz = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.ogg")
-latacz2 = Monster("Latacz", 2, "Elektryczność", 1, 1, "audio/latacz.ogg")
+zombi = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav")
+zombi2 = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav")
+szlam = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3")
+szlam2 = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3")
+ognik = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg")
+ognik2 = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg")
+bandzior = Monster("Bandzior", 2, "Fizyczne", "Ziemia", 1, 1, "audio/bandzior.mp3")
+bandzior2 = Monster("Bandzior", 2, "Fizyczne", "Ziemia",1, 1, "audio/bandzior.mp3")
+latacz = Monster("Latacz", 2, "Elektryczność","Ogień", 1, 1, "audio/latacz.ogg")
+latacz2 = Monster("Latacz", 2, "Elektryczność", "Ogień",1, 1, "audio/latacz.ogg")
 
 
-def battle(ph, monster, room, previous_position, player_position):
+def battle(monster, room, previous_position, player_position):
+    global player_health
     monster.play_sound()
     print(f"Rozpoczęto walkę z {monster.name}.")
 
@@ -152,22 +164,70 @@ def battle(ph, monster, room, previous_position, player_position):
             room.remove_monster()
             break
 
-        # Potwór atakuje
-        ph -= monster.damage
-        print(f"{monster.name} atakuje i zadaje {monster.damage} obrażeń. Masz teraz {ph} punktów zdrowia.")
-        if ph <= 0:
+        player_health -= monster.damage
+        print(f"{monster.name} atakuje i zadaje {monster.damage} obrażeń. Masz teraz {player_health} punktów zdrowia.")
+        if player_health <= 0:
             print("Zostałeś pokonany!")
-            pygame.quit()  # Wyłączenie gry
+            pygame.quit()
             exit()
 
-    return player_position
+    return player_health, player_position
+
+
+class Upgrade:
+    def __init__(self, name, effect):
+        self.name = name
+        self.effect = effect
+
+    def apply(self):
+        self.effect()
+
+
+def heal_player():
+    global player_health
+    player_health = min(player_health + 1, 3)
+    print(f"Zostałeś uleczony! Masz teraz {player_health} punktów zdrowia.")
+
+
+def restore_spells():
+    global fireball, wind_blast, giant_rock, fury_strike, lightning_strike
+    fireball.uses_left = 2
+    wind_blast.uses_left = 2
+    giant_rock.uses_left = 2
+    fury_strike.uses_left = 2
+    lightning_strike.uses_left = 2
+    print("Zaklęcia zostały odnowione.")
+
+
+def increase_spell_capacity():
+    global fireball, wind_blast, giant_rock, fury_strike, lightning_strike
+    fireball.uses_left += 1
+    wind_blast.uses_left += 1
+    giant_rock.uses_left += 1
+    fury_strike.uses_left += 1
+    lightning_strike.uses_left += 1
+    print("Liczba użyć zaklęć została zwiększona o 1.")
+
+
+upgrades = [
+    Upgrade("Uleczenie", heal_player),
+    Upgrade("Odnowienie zaklęć", restore_spells),
+    Upgrade("Zwiększenie liczby zaklęć", increase_spell_capacity)
+]
+
+
+def find_upgrade():
+    upgrade = random.choice(upgrades)
+    print(f"Znalazłeś ulepszenie: {upgrade.name}!")
+    upgrade.apply()
 
 
 class Room:
-    def __init__(self, has_monster=False, is_exit=False):
+    def __init__(self, has_monster=False, is_exit=False, has_upgrade=False):
         self.has_monster = has_monster
         self.monster = None
         self.is_exit = is_exit
+        self.has_upgrade = has_upgrade
 
     def place_monster(self, monster):
         self.has_monster = True
@@ -177,20 +237,21 @@ class Room:
         self.has_monster = False
         self.monster = None
 
+    def place_upgrade(self):
+        self.has_upgrade = True
+
     def enter(self):
+        global current_level, quantity_of_levels
         if self.is_exit:
-            end_sound.play()
-            print("Koniec gry!")
-            screen.fill(WHITE)
-            font = pygame.font.SysFont(None, 55)
-            end_text = font.render("Koniec gry!", True, BLACK)
-            screen.blit(end_text, (SCREEN_WIDTH // 2 - end_text.get_width() // 2, SCREEN_HEIGHT // 2))
-            pygame.display.flip()
-            pygame.time.wait(2000)
-            wait_for_exit()
+            if current_level < quantity_of_levels - 1:
+                next_level()
+            else:
+                end_game()
         elif self.has_monster and self.monster:
             print(f"Znalazłeś {self.monster.name}!")
             battle(player_health, self.monster, self)
+        elif self.has_upgrade:
+            find_upgrade()
         else:
             print("Pokój jest pusty.")
 
@@ -224,6 +285,9 @@ def generate_dungeon(map_size, num_monsters):
             dungeon_map[y][x].place_monster(random.choice(monsters))
             placed_monsters += 1
 
+    upgrade_x, upgrade_y = random.randint(0, map_size - 1), random.randint(0, map_size - 1)
+    dungeon_map[upgrade_y][upgrade_x].place_upgrade()
+
     return dungeon_map
 
 
@@ -244,15 +308,41 @@ def move_player_on_map(command, player_pos, dungeon_map):
         wall_sound.play()
         return [x, y]
 
-    step_sound.play(1)
+    step_sound.play()
     new_room = dungeon_map[y][x]
+
     if new_room.has_monster and new_room.monster:
-        player_position = battle(player_health, new_room.monster, new_room, previous_position, [x, y])
+        if not battle(new_room.monster, new_room, previous_position, player_position):
+            return previous_position
     else:
         new_room.enter()
-        player_position = [x, y]
 
-    return player_position
+    player_position = [x, y]
+    return [x, y]
+
+
+def next_level():
+    global current_level, dungeon_map, player_position
+    current_level += 1
+    if current_level < quantity_of_levels:
+        print(f"Przechodzisz na poziom {current_level + 1}!")
+        dungeon_map = generate_dungeon(MAP_SIZE, 5)
+        player_position = [2, 2]
+    else:
+        print("Gratulacje! Ukończyłeś wszystkie poziomy lochu!")
+        end_game()
+
+def end_game():
+    end_sound.play()
+    print("Koniec gry!")
+    screen.fill(WHITE)
+    font = pygame.font.SysFont(None, 55)
+    end_text = font.render("Koniec gry! Wygrałeś!", True, BLACK)
+    screen.blit(end_text, (SCREEN_WIDTH // 2 - end_text.get_width() // 2, SCREEN_HEIGHT // 2))
+    pygame.display.flip()
+    pygame.time.wait(5000)
+    pygame.quit()
+    exit()
 
 
 dungeon_map = generate_dungeon(MAP_SIZE, 5)
@@ -267,9 +357,14 @@ while running:
 
     if command == "wyjdź":
         running = False
+    elif "stan" in command:
+        print(f"Twoje zdrowie: {player_health}")
+        for _ in range(player_health):
+            health_sound.play()
+            pygame.time.wait(1000)
     elif command:
         player_position = move_player_on_map(command, player_position, dungeon_map)
-        print(f"Pozycja gracza: {player_position}")
+        print(f"Pozycja gracza: {player_position},{current_level}")
     else:
         print("Nieznana komenda.")
 
