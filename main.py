@@ -34,6 +34,7 @@ player_position = [2, 2]
 player_health = 3
 current_level = 0
 quantity_of_levels = 3
+stan = "intro"
 
 movement_synonyms = {
     "góra": ["góra", "w górę", "na północ", "w górę mapy", "do góry"],
@@ -91,14 +92,16 @@ escape_spell = Spell("Ucieczka", "Neutralne", float('inf'), "ucieczka", 0, None)
 
 
 class Monster:
-    def __init__(self, name, health, weakness, resist, damage, speed, sound_file):
+    def __init__(self, name, health, weakness, resist, damage, speed, enter_sound, dying_sound):
         self.name = name
         self.health = health
+        self.max_health = health
         self.weakness = weakness
         self.resist = resist
         self.damage = damage
         self.speed = speed
-        self.sound = pygame.mixer.Sound(sound_file)
+        self.sound = pygame.mixer.Sound(enter_sound)
+        self.dying = pygame.mixer.Sound(dying_sound)
 
     def play_sound(self):
         self.sound.play()
@@ -115,24 +118,29 @@ class Monster:
             print(f"{self.name} ma teraz {self.health} punktów zdrowia.")
         else:
             print(f"{self.name} został pokonany!")
+            self.dying.play()
+
+    def reset_health(self):
+        self.health = self.max_health
 
 
-zombi = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav")
-zombi2 = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav")
-szlam = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3")
-szlam2 = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3")
-ognik = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg")
-ognik2 = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg")
-bandzior = Monster("Bandzior", 2, "Fizyczne", "Ziemia", 1, 1, "audio/bandzior.mp3")
-bandzior2 = Monster("Bandzior", 2, "Fizyczne", "Ziemia",1, 1, "audio/bandzior.mp3")
-latacz = Monster("Latacz", 2, "Elektryczność","Ogień", 1, 1, "audio/latacz.ogg")
-latacz2 = Monster("Latacz", 2, "Elektryczność", "Ogień",1, 1, "audio/latacz.ogg")
+zombi = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav", "audio/Bonk.mp3")
+zombi2 = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav", "audio/Bonk.mp3")
+szlam = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3", "audio/Bonk.mp3")
+szlam2 = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3", "audio/Bonk.mp3")
+ognik = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg", "audio/Bonk.mp3")
+ognik2 = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg", "audio/Bonk.mp3")
+bandzior = Monster("Bandzior", 2, "Fizyczne", "Ziemia", 1, 1, "audio/bandzior.mp3", "audio/Bonk.mp3")
+bandzior2 = Monster("Bandzior", 2, "Fizyczne", "Ziemia",1, 1, "audio/bandzior.mp3", "audio/Bonk.mp3")
+latacz = Monster("Latacz", 2, "Elektryczność","Ogień", 1, 1, "audio/latacz.ogg", "audio/Bonk.mp3")
+latacz2 = Monster("Latacz", 2, "Elektryczność", "Ogień",1, 1, "audio/latacz.ogg", "audio/Bonk.mp3")
 
 
 def battle(monster, room, previous_position, player_position):
     global player_health
     monster.play_sound()
     print(f"Rozpoczęto walkę z {monster.name}.")
+    spells = [fireball, wind_blast, giant_rock, fury_strike, lightning_strike]
 
     while monster.health > 0:
         command = None
@@ -153,11 +161,10 @@ def battle(monster, room, previous_position, player_position):
             elif "błyskawica" in command:
                 lightning_strike.cast(monster)
             elif "ucieczka" in command:
-                print("Uciekasz z walki!")
                 return previous_position
             else:
-                print("Nieznane zaklęcie. Spróbuj ponownie.")
-                command = None
+                random_spell = random.choice(spells)
+                random_spell.cast(monster)
 
         if monster.health <= 0:
             print(f"Pokonałeś {monster.name}!")
@@ -324,13 +331,20 @@ def move_player_on_map(command, player_pos, dungeon_map):
 def next_level():
     global current_level, dungeon_map, player_position
     current_level += 1
+
     if current_level < quantity_of_levels:
         print(f"Przechodzisz na poziom {current_level + 1}!")
+        for row in dungeon_map:
+            for room in row:
+                if room.has_monster and room.monster:
+                    room.monster.reset_health()
+
         dungeon_map = generate_dungeon(MAP_SIZE, 5)
         player_position = [2, 2]
     else:
         print("Gratulacje! Ukończyłeś wszystkie poziomy lochu!")
         end_game()
+
 
 def end_game():
     end_sound.play()
@@ -345,29 +359,74 @@ def end_game():
     exit()
 
 
-dungeon_map = generate_dungeon(MAP_SIZE, 5)
 running = True
+dungeon_map = generate_dungeon(MAP_SIZE, quantity_of_levels)
 while running:
     screen.fill(BLACK)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    command = recognize_command()
+    if stan == "intro":
+        pygame.mixer.Sound("audio/pyt1.mp3").play()
+        pygame.time.wait(1000)
+        command = recognize_command()
+        if "tak" in command:
+            stan = "gra"
 
-    if command == "wyjdź":
-        running = False
-    elif "stan" in command:
-        print(f"Twoje zdrowie: {player_health}")
-        for _ in range(player_health):
-            health_sound.play()
-            pygame.time.wait(1000)
-    elif command:
-        player_position = move_player_on_map(command, player_position, dungeon_map)
-        print(f"Pozycja gracza: {player_position},{current_level}")
+        elif "nie" in command:
+            pygame.mixer.Sound("audio/sprintro.mp3").play()
+            stan = "tutor"
+
+        elif not command:
+            continue
+
+        else:
+            continue
+
+    elif stan == "tutor":
+        pygame.mixer.Sound("audio/pyt2.mp3")
+        pygame.time.wait(1000)
+        command = recognize_command()
+        if "tak" in command:
+            stan = "gra"
+
+        elif "nie" in command:
+            pygame.mixer.Sound("audio/tutor.mp3").play()
+            stan = "gra"
+
+        elif not command:
+            continue
+
+        else:
+            continue
+
+    elif stan == "gra":
+        command = recognize_command()
+
+        if not command:
+            print("Nie rozpoznano komendy.")
+            continue
+
+        if command == "wyjdź":
+            running = False
+
+        elif "stan" in command:
+            print(f"Twoje zdrowie: {player_health}")
+            for _ in range(player_health):
+                health_sound.play()
+                pygame.time.wait(1000)
+
+        elif command:
+            player_position = move_player_on_map(command, player_position, dungeon_map)
+            print(f"Pozycja gracza: {player_position},{current_level}")
+
+        else:
+            print("Nieznana komenda.")
+
+        pygame.display.flip()
+
     else:
-        print("Nieznana komenda.")
-
-    pygame.display.flip()
+        pygame.quit()
 
 pygame.quit()
