@@ -8,7 +8,7 @@ pygame.mixer.init()
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Ślepy lochołaz")
+pygame.display.set_caption("Krucza Ślepota")
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -24,7 +24,7 @@ lightning_strike_sound = pygame.mixer.Sound("audio/pierun.mp3")
 pygame.mixer.music.load("audio/bbg.ogg")
 pygame.mixer.music.play(-1)  # -1 to nieskończona pętla
 step_sound = pygame.mixer.Sound("audio/Tup.ogg")
-wall_sound = pygame.mixer.Sound("audio/Bonk.mp3")
+wall_sound = pygame.mixer.Sound("audio/wall.mp3")
 end_sound = pygame.mixer.Sound("audio/claps.ogg")
 health_sound = pygame.mixer.Sound("audio/heart.mp3")
 
@@ -113,6 +113,8 @@ class Monster:
         elif damage_type == self.resist:
             amount = 0
             print(f"{self.name} jest odporny na {damage_type}")
+            pygame.mixer.Sound("audio/nulbool.mp3").play()
+            pygame.time.wait(2000)
         self.health -= amount
         if self.health > 0:
             print(f"{self.name} ma teraz {self.health} punktów zdrowia.")
@@ -128,8 +130,8 @@ zombi = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav"
 zombi2 = Monster("Zombi", 2, "Ogień", "Elektryczność", 1, 1, "audio/Zombi.wav", "audio/Bonk.mp3")
 szlam = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3", "audio/Bonk.mp3")
 szlam2 = Monster("Szlam", 2, "Wiatr", "Fizyczne", 1, 1, "audio/szlamek.mp3", "audio/Bonk.mp3")
-ognik = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg", "audio/Bonk.mp3")
-ognik2 = Monster("Ognik",2,"Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg", "audio/Bonk.mp3")
+ognik = Monster("Ognik", 2, "Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg", "audio/Bonk.mp3")
+ognik2 = Monster("Ognik", 2, "Ziemia", "Wiatr", 1, 1, "audio/ognik.ogg", "audio/Bonk.mp3")
 bandzior = Monster("Bandzior", 2, "Fizyczne", "Ziemia", 1, 1, "audio/bandzior.mp3", "audio/Bonk.mp3")
 bandzior2 = Monster("Bandzior", 2, "Fizyczne", "Ziemia",1, 1, "audio/bandzior.mp3", "audio/Bonk.mp3")
 latacz = Monster("Latacz", 2, "Elektryczność","Ogień", 1, 1, "audio/latacz.ogg", "audio/Bonk.mp3")
@@ -137,12 +139,17 @@ latacz2 = Monster("Latacz", 2, "Elektryczność", "Ogień",1, 1, "audio/latacz.o
 
 
 def battle(monster, room, previous_position, player_position):
+    pygame.mixer.Sound("audio/batcom.mp3").play()
+    pygame.time.wait(2000)
     global player_health
     monster.play_sound()
+    pygame.time.wait(2000)
     print(f"Rozpoczęto walkę z {monster.name}.")
     spells = [fireball, wind_blast, giant_rock, fury_strike, lightning_strike]
 
     while monster.health > 0:
+        pygame.mixer.Sound("audio/whatatk.mp3").play()
+        pygame.time.wait(1500)
         command = None
         while not command:
             command = recognize_command()
@@ -166,6 +173,8 @@ def battle(monster, room, previous_position, player_position):
                 random_spell = random.choice(spells)
                 random_spell.cast(monster)
 
+            pygame.time.wait(1000)
+
         if monster.health <= 0:
             print(f"Pokonałeś {monster.name}!")
             room.remove_monster()
@@ -173,6 +182,8 @@ def battle(monster, room, previous_position, player_position):
 
         player_health -= monster.damage
         print(f"{monster.name} atakuje i zadaje {monster.damage} obrażeń. Masz teraz {player_health} punktów zdrowia.")
+        pygame.mixer.Sound("audio/bool.mp3").play()
+        pygame.time.wait(1000)
         if player_health <= 0:
             print("Zostałeś pokonany!")
             pygame.quit()
@@ -193,7 +204,8 @@ class Upgrade:
 def heal_player():
     global player_health
     player_health = min(player_health + 1, 3)
-    print(f"Zostałeś uleczony! Masz teraz {player_health} punktów zdrowia.")
+    pygame.mixer.Sound("audio/heal.mp3").play()
+    pygame.time.wait(2200)
 
 
 def restore_spells():
@@ -313,6 +325,7 @@ def move_player_on_map(command, player_pos, dungeon_map):
         x += 1
     else:
         wall_sound.play()
+        pygame.time.wait(3500)
         return [x, y]
 
     step_sound.play()
@@ -334,6 +347,8 @@ def next_level():
 
     if current_level < quantity_of_levels:
         print(f"Przechodzisz na poziom {current_level + 1}!")
+        pygame.mixer.Sound("audio/down.mp3").play()
+        pygame.time.wait(2000)
         for row in dungeon_map:
             for room in row:
                 if room.has_monster and room.monster:
@@ -371,37 +386,41 @@ while running:
         pygame.mixer.Sound("audio/pyt1.mp3").play()
         pygame.time.wait(1000)
         command = recognize_command()
+        if not command:
+            continue
+
         if "tak" in command:
-            stan = "gra"
+            stan = "tutor"
 
         elif "nie" in command:
             pygame.mixer.Sound("audio/sprintro.mp3").play()
+            pygame.time.wait(51000)
             stan = "tutor"
-
-        elif not command:
-            continue
 
         else:
             continue
 
-    elif stan == "tutor":
-        pygame.mixer.Sound("audio/pyt2.mp3")
+    if stan == "tutor":
+        pygame.mixer.Sound("audio/pyt2.mp3").play()
         pygame.time.wait(1000)
         command = recognize_command()
+        if not command:
+            continue
+
         if "tak" in command:
             stan = "gra"
 
         elif "nie" in command:
             pygame.mixer.Sound("audio/tutor.mp3").play()
+            pygame.time.wait(33000)
             stan = "gra"
-
-        elif not command:
-            continue
 
         else:
             continue
 
-    elif stan == "gra":
+    if stan == "gra":
+        pygame.mixer.Sound("audio/ask.mp3").play()
+        pygame.time.wait(1000)
         command = recognize_command()
 
         if not command:
