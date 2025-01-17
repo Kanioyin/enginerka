@@ -28,7 +28,6 @@ wall_sound = pygame.mixer.Sound("audio/wall.mp3")
 end_sound = pygame.mixer.Sound("audio/claps.ogg")
 health_sound = pygame.mixer.Sound("audio/heart.mp3")
 
-
 MAP_SIZE = 5
 player_position = [2, 2]
 player_health = 3
@@ -117,7 +116,7 @@ class Monster:
             pygame.time.wait(2000)
         self.health -= amount
         if self.health > 0:
-            print(f"{self.name} ma teraz {self.health} punktów zdrowia.")
+            print(f"{self.name} ma {self.health} hp.")
         else:
             print(f"{self.name} został pokonany!")
             self.dying.play()
@@ -144,7 +143,7 @@ def battle(monster, room, previous_position, player_position):
     global player_health
     monster.play_sound()
     pygame.time.wait(2000)
-    print(f"Rozpoczęto walkę z {monster.name}.")
+    print(f"Walka z {monster.name}.")
     spells = [fireball, wind_blast, giant_rock, fury_strike, lightning_strike]
 
     while monster.health > 0:
@@ -154,7 +153,6 @@ def battle(monster, room, previous_position, player_position):
         while not command:
             command = recognize_command()
             if not command:
-                print("Nie rozumiem, spróbuj ponownie.")
                 continue
 
             if "kula ognia" in command:
@@ -176,12 +174,11 @@ def battle(monster, room, previous_position, player_position):
             pygame.time.wait(1000)
 
         if monster.health <= 0:
-            print(f"Pokonałeś {monster.name}!")
             room.remove_monster()
             break
 
         player_health -= monster.damage
-        print(f"{monster.name} atakuje i zadaje {monster.damage} obrażeń. Masz teraz {player_health} punktów zdrowia.")
+        print(f"{monster.name} atakuje masz {player_health} hp.")
         pygame.mixer.Sound("audio/bool.mp3").play()
         pygame.time.wait(1000)
         if player_health <= 0:
@@ -215,7 +212,6 @@ def restore_spells():
     giant_rock.uses_left = 2
     fury_strike.uses_left = 2
     lightning_strike.uses_left = 2
-    print("Zaklęcia zostały odnowione.")
 
 
 def increase_spell_capacity():
@@ -237,7 +233,7 @@ upgrades = [
 
 def find_upgrade():
     upgrade = random.choice(upgrades)
-    print(f"Znalazłeś ulepszenie: {upgrade.name}!")
+    print(f"Ulepszenie: {upgrade.name}!")
     upgrade.apply()
 
 
@@ -301,7 +297,9 @@ def generate_dungeon(map_size, num_monsters):
         x, y = random.randint(0, map_size - 1), random.randint(0, map_size - 1)
 
         if not dungeon_map[y][x].has_monster and not dungeon_map[y][x].is_exit:
-            dungeon_map[y][x].place_monster(random.choice(monsters))
+            selected_monster = random.choice(monsters)
+            monsters.remove(selected_monster)
+            dungeon_map[y][x].place_monster(selected_monster)
             placed_monsters += 1
 
     upgrade_x, upgrade_y = random.randint(0, map_size - 1), random.randint(0, map_size - 1)
@@ -346,7 +344,7 @@ def next_level():
     current_level += 1
 
     if current_level < quantity_of_levels:
-        print(f"Przechodzisz na poziom {current_level + 1}!")
+        print(f"Poziom {current_level + 1}!")
         pygame.mixer.Sound("audio/down.mp3").play()
         pygame.time.wait(2000)
         for row in dungeon_map:
@@ -357,19 +355,15 @@ def next_level():
         dungeon_map = generate_dungeon(MAP_SIZE, 5)
         player_position = [2, 2]
     else:
-        print("Gratulacje! Ukończyłeś wszystkie poziomy lochu!")
         end_game()
 
 
 def end_game():
     end_sound.play()
-    print("Koniec gry!")
     screen.fill(WHITE)
-    font = pygame.font.SysFont(None, 55)
-    end_text = font.render("Koniec gry! Wygrałeś!", True, BLACK)
-    screen.blit(end_text, (SCREEN_WIDTH // 2 - end_text.get_width() // 2, SCREEN_HEIGHT // 2))
     pygame.display.flip()
-    pygame.time.wait(5000)
+    pygame.mixer.Sound("audio/outro.mp3").play()
+    pygame.time.wait(11000)
     pygame.quit()
     exit()
 
@@ -431,7 +425,7 @@ while running:
             running = False
 
         elif "stan" in command:
-            print(f"Twoje zdrowie: {player_health}")
+            print(f"Zdrowie: {player_health}")
             for _ in range(player_health):
                 health_sound.play()
                 pygame.time.wait(1000)
